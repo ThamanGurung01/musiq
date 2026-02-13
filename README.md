@@ -1,0 +1,1 @@
+MusiQ plays music in queue
