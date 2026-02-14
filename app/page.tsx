@@ -1,51 +1,16 @@
 "use client";
+import { useYoutubePlayer } from '@/hooks/useYoutubePlayer';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type YTWindow=Window & {
-      onYouTubeIframeAPIReady?: ()=>void;
-      YT?:typeof YT;
-    }
 export default function Home() {
-  const [player, setPlayer] = useState<YT.Player | null>(null);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
   const [link, setLink] = useState<string>("");
   const [musicQueue, setMusicQueue]=useState<{musicType?:string,musicId?:string}[]>([]);
   const [musicIndex,setMusicIndex]=useState<number>(0);
   const musicIndexRef=useRef(musicIndex);
   const musicQueueRef=useRef(musicQueue);
-
+  const player=useYoutubePlayer();
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
-  const createScript=useCallback(()=>{
-    const tag=document.createElement('script');
-    tag.src="https://www.youtube.com/iframe_api";
-    const firstScriptTag=document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag,firstScriptTag);
-  },[])
-  const onYouTubeIframeAPIReady=useCallback(()=>{
-    if (player) return;
-    const newPlayer=new YT.Player('player',{
-      height:'1',
-      width:'1',
-      events: {
-        onStateChange: (event)=>{
-          if(event.data === YT.PlayerState.ENDED){
-            const nextIndex=musicIndexRef.current+1;
-            if(nextIndex < musicQueueRef.current.length){
-            setMusicIndex(nextIndex);
-          }
-        }}
-  }})
-    setPlayer(newPlayer);
-  },[player])
-
-  useEffect(()=>{
-    createScript();
-    (window as YTWindow).onYouTubeIframeAPIReady=onYouTubeIframeAPIReady;
-    return ()=>{
-      if((window as YTWindow).onYouTubeIframeAPIReady===onYouTubeIframeAPIReady){
-        delete (window as YTWindow).onYouTubeIframeAPIReady;
-    }}
-  },[createScript,onYouTubeIframeAPIReady])
 useEffect(()=>{
   if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
     console.log("Music Index:", musicIndex);
@@ -66,6 +31,21 @@ useEffect(()=>{
   musicQueueRef.current=musicQueue;
   musicIndexRef.current=musicIndex;
 },[musicQueue,musicIndex])
+const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
+  if (event.data === YT.PlayerState.ENDED) {
+    const nextIndex = musicIndexRef.current + 1;
+    if (nextIndex < musicQueueRef.current.length) {
+      setMusicIndex(nextIndex);
+    }
+  }
+}, []);
+useEffect(() => {
+  if (player) {
+    player.addEventListener('onStateChange', handleStateChange);
+    return () => {
+      player.removeEventListener('onStateChange', handleStateChange);
+    } }}, [player, handleStateChange]);
+
   const handleAddMusic=()=>{
   const type=link.length===11?"default":"playlist";
   setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link}]);
