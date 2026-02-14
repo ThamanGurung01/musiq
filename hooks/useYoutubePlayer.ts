@@ -6,6 +6,7 @@ type YTWindow=Window & {
 }
 export const useYoutubePlayer=()=>{
   const [player, setPlayer] = useState<YT.Player | null>(null);
+  const [loading,setLoading]=useState(true);
   const createScript=useCallback(()=>{
     const tag=document.createElement('script');
     tag.src="https://www.youtube.com/iframe_api";
@@ -14,18 +15,13 @@ export const useYoutubePlayer=()=>{
   },[])
   const onYouTubeIframeAPIReady=useCallback(()=>{
     if (player) return;
+    setLoading(true);
     const newPlayer=new YT.Player('player',{
       height:'400',
       width:'400',
-  //     events: {
-  //       onStateChange: (event)=>{
-  //         if(event.data === YT.PlayerState.ENDED){
-  //           const nextIndex=musicIndexRef.current+1;
-  //           if(nextIndex < musicQueueRef.current.length){
-  //           setMusicIndex(nextIndex);
-  //         }
-  //       }}
-  // }
+      events: {
+        onReady:()=>setLoading(false),
+  }
   })
     setPlayer(newPlayer);
   },[player])
@@ -39,5 +35,5 @@ export const useYoutubePlayer=()=>{
     }}
   },[createScript,onYouTubeIframeAPIReady])
 
-  return player;
+  return {player,loading};
 }

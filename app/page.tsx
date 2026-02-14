@@ -1,15 +1,14 @@
 "use client";
+import { useMusicQueue } from '@/hooks/useMusicQueue';
 import { useYoutubePlayer } from '@/hooks/useYoutubePlayer';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function Home() {
+  const {player,loading}=useYoutubePlayer();
+  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex}=useMusicQueue();
+  const [loop,setLoop]=useState<boolean>(false);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
-  const [link, setLink] = useState<string>("");
-  const [musicQueue, setMusicQueue]=useState<{musicType?:string,musicId?:string}[]>([]);
-  const [musicIndex,setMusicIndex]=useState<number>(0);
-  const musicIndexRef=useRef(musicIndex);
-  const musicQueueRef=useRef(musicQueue);
-  const player=useYoutubePlayer();
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
 useEffect(()=>{
   if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
@@ -27,18 +26,16 @@ useEffect(()=>{
       }
       player.playVideo();
     },[musicQueue,musicIndex,player])
-useEffect(()=>{
-  musicQueueRef.current=musicQueue;
-  musicIndexRef.current=musicIndex;
-},[musicQueue,musicIndex])
 const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
   if (event.data === YT.PlayerState.ENDED) {
     const nextIndex = musicIndexRef.current + 1;
     if (nextIndex < musicQueueRef.current.length) {
       setMusicIndex(nextIndex);
+    } else if (loop) {
+      setMusicIndex(0);
     }
   }
-}, []);
+}, [musicIndexRef, musicQueueRef, setMusicIndex,loop]);
 useEffect(() => {
   if (player) {
     player.addEventListener('onStateChange', handleStateChange);
@@ -46,34 +43,34 @@ useEffect(() => {
       player.removeEventListener('onStateChange', handleStateChange);
     } }}, [player, handleStateChange]);
 
-  const handleAddMusic=()=>{
-  const type=link.length===11?"default":"playlist";
-  setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link}]);
-  setLink("");
-  }
-const handleNext=()=>{
+
+const handleNext=useCallback(()=>{
+  if(musicQueueRef.current.length===0 ||musicQueueRef.current.length===1 || (!loop && musicIndexRef.current >= musicQueueRef.current.length-1)) return;
   player?.stopVideo();
-  setMusicIndex(prevIndex => (prevIndex + 1) % musicQueueRef.current.length);
+  next()
   const nextMusic=musicQueueRef.current[musicIndexRef.current];
   if(nextMusic && nextMusic.musicId){
     player?.loadVideoById(nextMusic.musicId);
   }
-}
-const handlePrev=()=>{
+},[musicQueueRef, musicIndexRef, next, player,loop])
+const handlePrev=useCallback(()=>{
+  if(musicQueueRef.current.length===0 ||musicQueueRef.current.length===1 || (!loop && musicIndexRef.current <= 0)) return;
   player?.stopVideo();
-  setMusicIndex(prevIndex => (prevIndex - 1 + musicQueueRef.current.length) % musicQueueRef.current.length);
+  prev();
   const prevMusic=musicQueueRef.current[musicIndexRef.current];
   if(prevMusic && prevMusic.musicId){
     player?.loadVideoById(prevMusic.musicId);
   }
-}
+},[musicQueueRef, musicIndexRef, prev, player,loop])
 const handleStop=()=>{
   player?.stopVideo();
-  setMusicIndex(0);
+  stop();
+}
+const handleLoop=()=>{
+  setLoop(prev=>!prev);
 }
 const handlePlay=()=>{
   if(player?.getPlayerState()!==YT.PlayerState.PLAYING&& player?.getPlayerState()!==YT.PlayerState.PAUSED){
-    console.log("playing");
     const musicId = musicQueueRef.current[musicIndexRef.current]?.musicId;
     if(musicId){
       player?.loadVideoById(musicId);
@@ -87,16 +84,20 @@ const handlePlay=()=>{
     <div>
       MusiQ plays music in queue <br/>
       <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link}/>
-      <button onClick={()=>handleAddMusic()}>Add</button> <br />
-      <button onClick={handlePlay}>Play</button>
-      <button onClick={() => player?.pauseVideo()}>Pause</button>
-      <button onClick={handleNext}>next</button>
-      <button onClick={handlePrev}>prev</button>
-      <button onClick={handleStop}>Stop</button>
+      <button onClick={addMusic} disabled={loading}>Add</button> <br />
+      <Image src={`https://img.youtube.com/vi/${musicQueue[musicIndex]?.musicId || ""}/maxresdefault.jpg`} alt='thumbnail' width={480} height={360}/>
+      <button onClick={handlePlay} disabled={loading}>Play</button>
+      <button onClick={() => player?.pauseVideo()} disabled={loading}>Pause</button>
+      <button onClick={handleNext} disabled={loading}>next</button>
+      <button onClick={handlePrev} disabled={loading}>prev</button>
+      <button onClick={handleStop} disabled={loading}>Stop</button>
+      <button onClick={handleLoop} disabled={loading}>Loop</button>
       <div>
+      <ul>
       {musicQueue.length>0 && musicQueue.map((i,index)=>{
-        return <div key={index}>{index+1}. {i.musicId}</div>
+        return <li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`}>{index+1}. {i.musicId}</li>
       })}
+    </ul>
       </div>
       <div id="player"></div>
     </div>
