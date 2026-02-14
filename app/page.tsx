@@ -24,11 +24,8 @@ export default function Home() {
   const onYouTubeIframeAPIReady=useCallback(()=>{
     if (player) return;
     const newPlayer=new YT.Player('player',{
-      height:'390',
-      width:'640',
-      playerVars: {
-        controls: 1,
-      },
+      height:'1',
+      width:'1',
       events: {
         onStateChange: (event)=>{
           if(event.data === YT.PlayerState.ENDED){
@@ -50,10 +47,10 @@ export default function Home() {
     }}
   },[createScript,onYouTubeIframeAPIReady])
 useEffect(()=>{
-  console.log("Music Index:", musicIndex);
-  console.log("Music type and id:", musicQueue[musicIndex]?.musicType, musicQueue[musicIndex]?.musicId);
   if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
-        console.log("here1");
+    console.log("Music Index:", musicIndex);
+    console.log("Music type and id:", musicQueue[musicIndex]?.musicType, musicQueue[musicIndex]?.musicId);
+    console.log("here1");
     const current= musicQueue[musicIndex];
     const musicId = current.musicId;
     if(!musicId) return;
@@ -65,28 +62,62 @@ useEffect(()=>{
       }
       player.playVideo();
     },[musicQueue,musicIndex,player])
-  const handleAddMusic=()=>{
-    const type=link.length===11?"default":"playlist";
-  setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link}]);
-  setLink("");
-  }
 useEffect(()=>{
   musicQueueRef.current=musicQueue;
   musicIndexRef.current=musicIndex;
 },[musicQueue,musicIndex])
+  const handleAddMusic=()=>{
+  const type=link.length===11?"default":"playlist";
+  setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link}]);
+  setLink("");
+  }
+const handleNext=()=>{
+  player?.stopVideo();
+  setMusicIndex(prevIndex => (prevIndex + 1) % musicQueueRef.current.length);
+  const nextMusic=musicQueueRef.current[musicIndexRef.current];
+  if(nextMusic && nextMusic.musicId){
+    player?.loadVideoById(nextMusic.musicId);
+  }
+}
+const handlePrev=()=>{
+  player?.stopVideo();
+  setMusicIndex(prevIndex => (prevIndex - 1 + musicQueueRef.current.length) % musicQueueRef.current.length);
+  const prevMusic=musicQueueRef.current[musicIndexRef.current];
+  if(prevMusic && prevMusic.musicId){
+    player?.loadVideoById(prevMusic.musicId);
+  }
+}
+const handleStop=()=>{
+  player?.stopVideo();
+  setMusicIndex(0);
+}
+const handlePlay=()=>{
+  if(player?.getPlayerState()!==YT.PlayerState.PLAYING&& player?.getPlayerState()!==YT.PlayerState.PAUSED){
+    console.log("playing");
+    const musicId = musicQueueRef.current[musicIndexRef.current]?.musicId;
+    if(musicId){
+      player?.loadVideoById(musicId);
+    }
+  }else if(player?.getPlayerState()===YT.PlayerState.PAUSED){
+    console.log("paused playing");
+    player?.playVideo();
+  }
+}
   return (
     <div>
       MusiQ plays music in queue <br/>
       <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link}/>
-      <button onClick={()=>handleAddMusic()}>Add</button>
+      <button onClick={()=>handleAddMusic()}>Add</button> <br />
+      <button onClick={handlePlay}>Play</button>
+      <button onClick={() => player?.pauseVideo()}>Pause</button>
+      <button onClick={handleNext}>next</button>
+      <button onClick={handlePrev}>prev</button>
+      <button onClick={handleStop}>Stop</button>
       <div>
       {musicQueue.length>0 && musicQueue.map((i,index)=>{
         return <div key={index}>{index+1}. {i.musicId}</div>
       })}
       </div>
-      {/* <button onClick={() => player?.playVideo()}>Play</button>
-      <button onClick={() => player?.pauseVideo()}>Pause</button>
-      <button onClick={() => player?.stopVideo()}>Stop</button> */}
       <div id="player"></div>
     </div>
   );
