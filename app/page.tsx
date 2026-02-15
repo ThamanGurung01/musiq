@@ -5,19 +5,33 @@ import Image from 'next/image';
 import placeholderImage from '../public/placeholder.png';
 import { useCallback, useEffect, useState } from 'react';
 import MusicDuration from '@/components/MusicDuration';
+import { extractIdFromUrl } from '@/util/musicId';
 
 export default function Home() {
   const {player,loading,duration}=useYoutubePlayer();
   const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
   const [currentTime,setCurrentTime]=useState<number>(0);
+  const [isPlaying,setIsPlaying]=useState<boolean>(false);
+  const [imageUrl,setImageUrl]=useState<string>(placeholderImage.src);
+  // const currentItem = musicQueue[musicIndex];
+  // const playlistId = useMemo(
+  //   () => {
+  //     if(currentItem?.musicType === "playlist"){
+  //         return currentItem.musicId ?? null;
+  //     }
+  //     return (currentItem?.musicType === "playlist" ? currentItem.musicId ?? null : null)
+  //   },
+  //   [currentItem]
+  // );
+  // console.log("Current Item:", currentItem);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
-  const imageUrl = musicQueue.length>0?`https://img.youtube.com/vi/${musicQueue[musicIndex]?.musicId}/maxresdefault.jpg`:placeholderImage;
   const updateCurrentTime=useCallback(()=>{
     if (!player || typeof player.getPlayerState !== "function") return;
     if(player?.getPlayerState()===YT.PlayerState.PLAYING){
       setCurrentTime(player.getCurrentTime());
+      setIsPlaying(true);
     }
   },[player])
 useEffect(()=>{
@@ -42,15 +56,28 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [updateCurrentTime]);
 const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
+      const thumbnailUrl = musicQueueRef.current.length>0?`https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/maxresdefault.jpg`:placeholderImage.src;
+      setImageUrl(thumbnailUrl);
   if (event.data === YT.PlayerState.ENDED) {
+      setIsPlaying(false);
     const nextIndex = musicIndexRef.current + 1;
-    if (nextIndex < musicQueueRef.current.length) {
+    const queueLength= musicQueueRef.current.length;
+    if (nextIndex < queueLength) {
       setMusicIndex(nextIndex);
-    } else if (loop) {
+    } else if (loop && queueLength > 0) {
+    const current = musicQueueRef.current[0];
+      if (current?.musicType === "playlist"&&current.musicId) {
+        player?.loadPlaylist({ listType: "playlist", list: current.musicId });
+      } else if (current?.musicId) {
+        player?.loadVideoById(current.musicId);
+      } else {
+        player?.seekTo(0,true);
+      }
+      player?.playVideo();
       setMusicIndex(0);
     }
   }
-}, [musicIndexRef, musicQueueRef, setMusicIndex,loop]);
+}, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player,]);
 useEffect(() => {
   if (player) {
     player.addEventListener('onStateChange', handleStateChange);
@@ -88,28 +115,37 @@ const handlePlay=()=>{
     if(musicId){
       player?.loadVideoById(musicId);
     }
+    setIsPlaying(true);
   }else if(player?.getPlayerState()===YT.PlayerState.PAUSED){
     console.log("paused playing");
     player?.playVideo();
+    setIsPlaying(false);
   }
 }
+const handlePause=()=>{
+  player?.pauseVideo();
+  setIsPlaying(false);
+}
+const buttonStyle=`px-4 py-2 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer`;
   return (
     <div>
       MusiQ plays music in queue <br/>
       <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link}/>
       <button onClick={addMusic} disabled={loading}>Add</button> <br />
-      {duration > 0 && <p>Duration: {duration} seconds</p>} <br />
-      {currentTime && <p>Current Time: {currentTime.toFixed(2)} seconds</p>}
+      <div className='flex flex-col items-center gap-3'>
       <div className='flex flex-col items-center gap-4 p-2'>
-      <Image src={imageUrl} alt='thumbnail' width={480} height={270} loading='eager'/>
+      <Image src={imageUrl} alt='thumbnail' className='max-w-[480] max-h-[268] object-cover' width={480} height={270} loading='eager'onError={() => setImageUrl(`https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/sddefault.jpg`)}/>
       <MusicDuration wPerc={duration > 0 ? ((currentTime / duration )* 100) : 0} duration={duration} player={player} setCurrentTime={setCurrentTime} musicIndex={musicIndex}/>
+      <div className='w-full flex justify-between'>
+      {isPlaying?<button onClick={handlePause} disabled={loading} className={`${buttonStyle} bg-purple-500`}>Pause</button>:
+      <button className={`${buttonStyle} bg-blue-500`} onClick={handlePlay} disabled={loading}>Play</button>}
+      <button onClick={handleNext} disabled={loading} className={`${buttonStyle} bg-green-500`}>next</button>
+      <button onClick={handlePrev} disabled={loading} className={`${buttonStyle} bg-yellow-500`}>prev</button>
+      <button onClick={handleStop} disabled={loading} className={`${buttonStyle} bg-red-500`}>Stop</button>
+      <button onClick={handleLoop} disabled={loading} className={`${buttonStyle} ${loop?"bg-blue-700":" bg-blue-500"}`}>Loop</button>
       </div>
-      <button onClick={handlePlay} disabled={loading}>Play</button>
-      <button onClick={() => player?.pauseVideo()} disabled={loading}>Pause</button>
-      <button onClick={handleNext} disabled={loading}>next</button>
-      <button onClick={handlePrev} disabled={loading}>prev</button>
-      <button onClick={handleStop} disabled={loading}>Stop</button>
-      <button onClick={handleLoop} disabled={loading}>Loop</button>
+      </div>
+      </div>
       <div>
       <ul>
       {musicQueue.length>0 && musicQueue.map((i,index)=>{

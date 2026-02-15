@@ -4,3 +4,8 @@ export const extractVideoId=(input:string)=>{
       return videoId;
     }
 }
+export const extractIdFromUrl=(input:string|null)=>{
+ if(!input) return null;
+ const imageId= input.split('v=')[1]?.split('&')[0];
+  return imageId ??null;
+}
