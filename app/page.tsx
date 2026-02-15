@@ -4,14 +4,22 @@ import { useYoutubePlayer } from '@/hooks/useYoutubePlayer';
 import Image from 'next/image';
 import placeholderImage from '../public/placeholder.png';
 import { useCallback, useEffect, useState } from 'react';
+import MusicDuration from '@/components/MusicDuration';
 
 export default function Home() {
-  const {player,loading}=useYoutubePlayer();
+  const {player,loading,duration}=useYoutubePlayer();
   const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
+  const [currentTime,setCurrentTime]=useState<number>(0);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
   const imageUrl = musicQueue.length>0?`https://img.youtube.com/vi/${musicQueue[musicIndex]?.musicId}/maxresdefault.jpg`:placeholderImage;
+  const updateCurrentTime=useCallback(()=>{
+    if (!player || typeof player.getPlayerState !== "function") return;
+    if(player?.getPlayerState()===YT.PlayerState.PLAYING){
+      setCurrentTime(player.getCurrentTime());
+    }
+  },[player])
 useEffect(()=>{
   if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
     console.log("Music Index:", musicIndex);
@@ -28,6 +36,11 @@ useEffect(()=>{
       }
       player.playVideo();
     },[musicQueue,musicIndex,player])
+
+useEffect(() => {
+  const interval = setInterval(updateCurrentTime, 500);
+  return () => clearInterval(interval);
+}, [updateCurrentTime]);
 const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
   if (event.data === YT.PlayerState.ENDED) {
     const nextIndex = musicIndexRef.current + 1;
@@ -44,8 +57,6 @@ useEffect(() => {
     return () => {
       player.removeEventListener('onStateChange', handleStateChange);
     } }}, [player, handleStateChange]);
-
-
 const handleNext=useCallback(()=>{
   if(musicQueueRef.current.length===0 ||musicQueueRef.current.length===1 || (!loop && musicIndexRef.current >= musicQueueRef.current.length-1)) return;
   player?.stopVideo();
@@ -87,7 +98,12 @@ const handlePlay=()=>{
       MusiQ plays music in queue <br/>
       <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link}/>
       <button onClick={addMusic} disabled={loading}>Add</button> <br />
-      <Image src={imageUrl} alt='thumbnail' width={480} height={270}/>
+      {duration > 0 && <p>Duration: {duration} seconds</p>} <br />
+      {currentTime && <p>Current Time: {currentTime.toFixed(2)} seconds</p>}
+      <div className='flex flex-col items-center gap-4 p-2'>
+      <Image src={imageUrl} alt='thumbnail' width={480} height={270} loading='eager'/>
+      <MusicDuration wPerc={duration > 0 ? ((currentTime / duration )* 100) : 0} duration={duration} player={player} setCurrentTime={setCurrentTime} musicIndex={musicIndex}/>
+      </div>
       <button onClick={handlePlay} disabled={loading}>Play</button>
       <button onClick={() => player?.pauseVideo()} disabled={loading}>Pause</button>
       <button onClick={handleNext} disabled={loading}>next</button>
