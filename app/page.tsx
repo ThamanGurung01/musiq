@@ -2,6 +2,7 @@
 import { useMusicQueue } from '@/hooks/useMusicQueue';
 import { useYoutubePlayer } from '@/hooks/useYoutubePlayer';
 import Image from 'next/image';
+import placeholderImage from '../public/placeholder.png';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function Home() {
@@ -10,6 +11,7 @@ export default function Home() {
   const [loop,setLoop]=useState<boolean>(false);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
+  const imageUrl = musicQueue.length>0?`https://img.youtube.com/vi/${musicQueue[musicIndex]?.musicId}/maxresdefault.jpg`:placeholderImage;
 useEffect(()=>{
   if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
     console.log("Music Index:", musicIndex);
@@ -85,7 +87,7 @@ const handlePlay=()=>{
       MusiQ plays music in queue <br/>
       <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link}/>
       <button onClick={addMusic} disabled={loading}>Add</button> <br />
-      <Image src={`https://img.youtube.com/vi/${musicQueue[musicIndex]?.musicId || ""}/maxresdefault.jpg`} alt='thumbnail' width={480} height={360}/>
+      <Image src={imageUrl} alt='thumbnail' width={480} height={270}/>
       <button onClick={handlePlay} disabled={loading}>Play</button>
       <button onClick={() => player?.pauseVideo()} disabled={loading}>Pause</button>
       <button onClick={handleNext} disabled={loading}>next</button>

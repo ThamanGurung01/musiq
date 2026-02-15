@@ -17,8 +17,8 @@ export const useYoutubePlayer=()=>{
     if (player) return;
     setLoading(true);
     const newPlayer=new YT.Player('player',{
-      height:'400',
-      width:'400',
+      height:'1',
+      width:'1',
       events: {
         onReady:()=>setLoading(false),
   }
