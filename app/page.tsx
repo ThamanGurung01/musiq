@@ -14,6 +14,7 @@ export default function Home() {
   const [currentTime,setCurrentTime]=useState<number>(0);
   const [isPlaying,setIsPlaying]=useState<boolean>(false);
   const [imageUrl,setImageUrl]=useState<string>(placeholderImage.src);
+  const [hasTriedFallback,setHasTriedFallback]=useState<boolean>(false);
   // const currentItem = musicQueue[musicIndex];
   // const playlistId = useMemo(
   //   () => {
@@ -56,8 +57,13 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [updateCurrentTime]);
 const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
-      const thumbnailUrl = musicQueueRef.current.length>0?`https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/maxresdefault.jpg`:placeholderImage.src;
-      setImageUrl(thumbnailUrl);
+  if(player?.getPlayerState()===YT.PlayerState.BUFFERING){
+    const nextUrl = musicQueueRef.current.length>0
+      ? `https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/maxresdefault.jpg`
+      : placeholderImage.src;
+    setHasTriedFallback(false);
+    setImageUrl(prev => (prev === nextUrl ? prev : nextUrl));
+  }
   if (event.data === YT.PlayerState.ENDED) {
       setIsPlaying(false);
     const nextIndex = musicIndexRef.current + 1;
@@ -119,20 +125,25 @@ const handlePlay=()=>{
   }else if(player?.getPlayerState()===YT.PlayerState.PAUSED){
     console.log("paused playing");
     player?.playVideo();
-    setIsPlaying(false);
+    setIsPlaying(true);
   }
 }
 const handlePause=()=>{
   player?.pauseVideo();
   setIsPlaying(false);
 }
-const buttonStyle=`px-4 py-2 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer`;
+const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer`;
   return (
     <div>
       <h1 className='text-center m-4'>MusiQ plays music in queue</h1>
       <div className='flex flex-col items-center gap-3'>
       <div className='flex flex-col items-center gap-4 p-2'>
-      <Image src={imageUrl} alt='thumbnail' className='max-w-[480] max-h-[268] object-cover' width={480} height={270} loading='eager'onError={() => setImageUrl(`https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/sddefault.jpg`)}/>
+      <Image src={imageUrl} alt='thumbnail' className='max-w-[480] max-h-[270] object-cover' width={480} height={270} loading='eager' onError={() =>{
+         if (hasTriedFallback) return;
+          setHasTriedFallback(true);
+          const fallbackUrl = `https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/sddefault.jpg`;
+         setImageUrl((prev) => prev === fallbackUrl ? placeholderImage.src : fallbackUrl);
+      }}/>
       <MusicDuration wPerc={duration > 0 ? ((currentTime / duration )* 100) : 0} duration={duration} player={player} setCurrentTime={setCurrentTime} musicIndex={musicIndex}/>
       <div className='w-full flex justify-between'>
       {isPlaying?<button onClick={handlePause} disabled={loading} className={`${buttonStyle} bg-purple-500`}>Pause</button>:
@@ -147,9 +158,9 @@ const buttonStyle=`px-4 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       <ul>
       <hr className='border-2 w-full my-5' />
       <div className='flex flex-col items-center m-4 gap-4'>
-      <div>
-      <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link} className='px-2 py-1'/>
-      <button onClick={addMusic} disabled={loading}>Add</button>
+      <div className='flex gap-5'>
+      <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link} className='px-2 py-1 border-2 rounded-lg'/>
+      <button onClick={addMusic} disabled={loading} className={`px-4 py-1.5 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer bg-green-500`}>Add</button>
       </div>
       <h1>Music Queue</h1>
       {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`}>{index+1}. {i.musicId}</li>):<p>No music in queue</p>}
