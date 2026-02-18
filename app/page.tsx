@@ -36,8 +36,8 @@ export default function Home() {
       setIsPlaying(true);
     }
   },[player])
-useEffect(()=>{
-  if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
+  const musicPlayMain=useCallback(()=>{
+      if(!player || musicQueue.length===0 || musicIndex >= musicQueue.length || player?.getPlayerState()===YT.PlayerState.PLAYING) return;
     console.log("Music Index:", musicIndex);
     console.log("Music type and id:", musicQueue[musicIndex]?.musicType, musicQueue[musicIndex]?.musicId);
     console.log("here1");
@@ -45,12 +45,14 @@ useEffect(()=>{
     const musicId = current.musicId;
     if(!musicId) return;
       if(current.musicType==="default"){
-        playVideoById(player,musicId,"default");
+      playVideoById(player,musicId,"default");
       } else {
-        console.log("here4");
-        playVideoById(player,musicId,"playlist");
+      playVideoById(player,musicId,"playlist");
       }
-    },[musicQueue,musicIndex,player])
+  },[musicQueue,musicIndex,player])
+useEffect(()=>{
+musicPlayMain();
+  },[musicPlayMain])
 
 useEffect(() => {
   const interval = setInterval(updateCurrentTime, 500);
