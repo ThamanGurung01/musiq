@@ -5,7 +5,8 @@ import Image from 'next/image';
 import placeholderImage from '../public/placeholder.png';
 import { useCallback, useEffect, useState } from 'react';
 import MusicDuration from '@/components/MusicDuration';
-import { extractIdFromUrl } from '@/util/musicId';
+import { extractIdFromUrl, playVideoById } from '@/util/musicId';
+
 
 export default function Home() {
   const {player,loading,duration}=useYoutubePlayer();
@@ -44,19 +45,18 @@ useEffect(()=>{
     const musicId = current.musicId;
     if(!musicId) return;
       if(current.musicType==="default"){
-        player.loadVideoById(musicId);
+        playVideoById(player,musicId,"default");
       } else {
         console.log("here4");
-        player.loadPlaylist({ listType: "playlist", list: musicId });
+        playVideoById(player,musicId,"playlist");
       }
-      player.playVideo();
     },[musicQueue,musicIndex,player])
 
 useEffect(() => {
   const interval = setInterval(updateCurrentTime, 500);
   return () => clearInterval(interval);
 }, [updateCurrentTime]);
-const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
+const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
   if(player?.getPlayerState()===YT.PlayerState.BUFFERING){
     const nextUrl = musicQueueRef.current.length>0
       ? `https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/maxresdefault.jpg`
@@ -73,13 +73,12 @@ const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
     } else if (loop && queueLength > 0) {
     const current = musicQueueRef.current[0];
       if (current?.musicType === "playlist"&&current.musicId) {
-        player?.loadPlaylist({ listType: "playlist", list: current.musicId });
+      playVideoById(player,current.musicId,"playlist");
       } else if (current?.musicId) {
-        player?.loadVideoById(current.musicId);
+      playVideoById(player,current.musicId,"default");
       } else {
         player?.seekTo(0,true);
       }
-      player?.playVideo();
       setMusicIndex(0);
     }
   }
@@ -95,8 +94,8 @@ const handleNext=useCallback(()=>{
   player?.stopVideo();
   next()
   const nextMusic=musicQueueRef.current[musicIndexRef.current];
-  if(nextMusic && nextMusic.musicId){
-    player?.loadVideoById(nextMusic.musicId);
+  if(nextMusic && nextMusic.musicId && nextMusic.musicType){
+    playVideoById(player,nextMusic.musicId,nextMusic.musicType);
   }
 },[musicQueueRef, musicIndexRef, next, player,loop])
 const handlePrev=useCallback(()=>{
@@ -104,8 +103,8 @@ const handlePrev=useCallback(()=>{
   player?.stopVideo();
   prev();
   const prevMusic=musicQueueRef.current[musicIndexRef.current];
-  if(prevMusic && prevMusic.musicId){
-    player?.loadVideoById(prevMusic.musicId);
+  if(prevMusic && prevMusic.musicId && prevMusic.musicType){
+    playVideoById(player,prevMusic.musicId,prevMusic.musicType);
   }
 },[musicQueueRef, musicIndexRef, prev, player,loop])
 const handleStop=()=>{
@@ -118,8 +117,9 @@ const handleLoop=()=>{
 const handlePlay=()=>{
   if(player?.getPlayerState()!==YT.PlayerState.PLAYING&& player?.getPlayerState()!==YT.PlayerState.PAUSED){
     const musicId = musicQueueRef.current[musicIndexRef.current]?.musicId;
-    if(musicId){
-      player?.loadVideoById(musicId);
+    const musicType = musicQueueRef.current[musicIndexRef.current]?.musicType;
+    if(musicId && musicType){
+      playVideoById(player,musicId,musicType);
     }
     setIsPlaying(true);
   }else if(player?.getPlayerState()===YT.PlayerState.PAUSED){
@@ -155,18 +155,21 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       </div>
       </div>
-      <ul>
+      
       <hr className='border-2 w-full my-5' />
       <div className='flex flex-col items-center m-4 gap-4'>
       <div className='flex gap-5'>
       <input type="text" placeholder='Enter the link' onChange={(e)=>setLink(e.target.value)} value={link} className='px-2 py-1 border-2 rounded-lg'/>
-      <button onClick={addMusic} disabled={loading} className={`px-4 py-1.5 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer bg-green-500`}>Add</button>
+      <button onClick={async ()=>player && await addMusic(player)} disabled={loading || !player} className={`px-4 py-1.5 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer bg-green-500`}>Add</button>
       </div>
       <h1>Music Queue</h1>
-      {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`}>{index+1}. {i.musicId}</li>):<p>No music in queue</p>}
+      <ul>
+      {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`}>{index+1}. {i.musicTitle}</li>):<p>No music in queue</p>}
+      </ul>
       </div>
-    </ul>
       <div id="player"></div>
     </div>
   );
 }
+
+//buttons fixes dragging player progress bar also check queue array
