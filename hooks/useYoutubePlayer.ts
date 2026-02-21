@@ -27,9 +27,8 @@ export const useYoutubePlayer=()=>{
         onStateChange:(event)=>{
           if(event.data===YT.PlayerState.PLAYING){
             setDuration(newPlayer.getDuration());
-          }
-  }}
-  })
+          }}}
+        })
     setPlayer(newPlayer);
   },[player])
 

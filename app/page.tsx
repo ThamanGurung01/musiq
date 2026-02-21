@@ -16,6 +16,7 @@ export default function Home() {
   const [isPlaying,setIsPlaying]=useState<boolean>(false);
   const [imageUrl,setImageUrl]=useState<string>(placeholderImage.src);
   const [hasTriedFallback,setHasTriedFallback]=useState<boolean>(false);
+  const [playListId,setPlayListId]=useState<Array<string>|null>(null);
   // const currentItem = musicQueue[musicIndex];
   // const playlistId = useMemo(
   //   () => {
@@ -49,6 +50,7 @@ export default function Home() {
       } else {
       playVideoById(player,musicId,"playlist");
       }
+      player?.playVideo();
   },[musicQueue,musicIndex,player])
 useEffect(()=>{
 musicPlayMain();
@@ -59,6 +61,7 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [updateCurrentTime]);
 const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
+  if(!player) return;
   if(player?.getPlayerState()===YT.PlayerState.BUFFERING){
     const nextUrl = musicQueueRef.current.length>0
       ? `https://img.youtube.com/vi/${extractIdFromUrl(player?.getVideoUrl()??null)}/maxresdefault.jpg`
@@ -84,7 +87,12 @@ const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
       setMusicIndex(0);
     }
   }
-}, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player,]);
+  if(event.data === YT.PlayerState.PLAYING){
+    if(!playListId && musicQueueRef.current[musicIndexRef.current]?.musicType === "playlist"){
+    setPlayListId(player.getPlaylist());
+    }
+  }
+}, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player,playListId]);
 useEffect(() => {
   if (player) {
     player.addEventListener('onStateChange', handleStateChange);
@@ -138,6 +146,7 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
   return (
     <div>
       <h1 className='text-center m-4'>MusiQ plays music in queue</h1>
+      <div className='flex gap-4 justify-center'>
       <div className='flex flex-col items-center gap-3'>
       <div className='flex flex-col items-center gap-4 p-2'>
       <Image src={imageUrl} alt='thumbnail' className='max-w-[480] max-h-[270] object-cover' width={480} height={270} loading='eager' onError={() =>{
@@ -157,7 +166,10 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       </div>
       </div>
-      
+      <div className='flex flex-col h-88 gap-2 overflow-y-auto w-40'>
+        {musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListId && playListId.length>0 && playListId.map((id,index)=><p key={index} className='text-sm'>{index+1}. {id}</p>)}
+      </div>
+      </div>
       <hr className='border-2 w-full my-5' />
       <div className='flex flex-col items-center m-4 gap-4'>
       <div className='flex gap-5'>
