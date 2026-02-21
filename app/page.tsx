@@ -10,7 +10,7 @@ import { extractIdFromUrl, playVideoById } from '@/util/musicId';
 
 export default function Home() {
   const {player,loading,duration}=useYoutubePlayer();
-  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex}=useMusicQueue();
+  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
   const [currentTime,setCurrentTime]=useState<number>(0);
   const [isPlaying,setIsPlaying]=useState<boolean>(false);
@@ -42,6 +42,7 @@ export default function Home() {
     console.log("Music Index:", musicIndex);
     console.log("Music type and id:", musicQueue[musicIndex]?.musicType, musicQueue[musicIndex]?.musicId);
     console.log("here1");
+    console.log("video data",videoData);
     const current= musicQueue[musicIndex];
     const musicId = current.musicId;
     if(!musicId) return;
@@ -51,7 +52,7 @@ export default function Home() {
       playVideoById(player,musicId,"playlist");
       }
       player?.playVideo();
-  },[musicQueue,musicIndex,player])
+  },[musicQueue,musicIndex,player,videoData])
 useEffect(()=>{
 musicPlayMain();
   },[musicPlayMain])
@@ -87,12 +88,26 @@ const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
       setMusicIndex(0);
     }
   }
-  if(event.data === YT.PlayerState.PLAYING){
-    if(!playListId && musicQueueRef.current[musicIndexRef.current]?.musicType === "playlist"){
-    setPlayListId(player.getPlaylist());
-    }
-  }
-}, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player,playListId]);
+  // if(event.data === YT.PlayerState.PLAYING){
+  //   console.log("Playing state detected, checking for playlist details...");
+  //   if(!playListId && musicQueueRef.current[musicIndexRef.current]?.musicType === "playlist"){
+  //     console.log("Fetching playlist details for ID:", musicQueueRef.current[musicIndexRef.current]?.musicId);
+  //     const res=await fetch("http://localhost:3000/api/video",{
+  //       method:"POST",
+  //       headers:{
+  //         "Content-Type":"application/json"
+  //       },
+  //       body:JSON.stringify({
+  //       videoUrl: player.getPlaylist(),
+  //       type: "playlist"})
+  //     })
+  //     console.log("Playlist details response:", res);
+  //     const jsonRes=await res.json();
+  //     console.log("Playlist response:", jsonRes);
+  //   // setPlayListId(jsonRes);
+  //   }
+  // }
+}, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player]);
 useEffect(() => {
   if (player) {
     player.addEventListener('onStateChange', handleStateChange);
@@ -166,9 +181,9 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       </div>
       </div>
-      <div className='flex flex-col h-88 gap-2 overflow-y-auto w-40'>
-        {musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListId && playListId.length>0 && playListId.map((id,index)=><p key={index} className='text-sm'>{index+1}. {id}</p>)}
-      </div>
+      <ul className='flex flex-col h-88 gap-2 overflow-y-auto w-[12%]'>
+        {musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""} truncate block w-full font-semibold`}>{index+1}. {playlistData?.title}</span></li>)}
+      </ul>
       </div>
       <hr className='border-2 w-full my-5' />
       <div className='flex flex-col items-center m-4 gap-4'>
@@ -177,8 +192,8 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       <button onClick={async ()=>player && await addMusic(player)} disabled={loading || !player} className={`px-4 py-1.5 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer bg-green-500`}>Add</button>
       </div>
       <h1>Music Queue</h1>
-      <ul>
-      {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`}>{index+1}. {i.musicTitle}</li>):<p>No music in queue</p>}
+      <ul className='w-[17%] overflow-y-auto h-88'>
+      {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`} title={i.musicTitle}><span className='truncate block w-full font-semibold'>{index+1}. {i.musicTitle}</span></li>):<p>No music in queue</p>}
       </ul>
       </div>
       <div id="player"></div>
