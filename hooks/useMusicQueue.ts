@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 // import videoDetails from '../app/api/video/page';
 import { OembedResponse } from '@/types/oembedType';
-import { IdToUrl } from "@/util/musicId";
+import { extractDataFromInput } from "@/util/musicId";
 import { playlistDataType, ytContentType } from "@/types/ytContentType";
 
 interface VideoData {
@@ -14,6 +14,7 @@ export const useMusicQueue=()=>{
   const [musicIndex,setMusicIndex]=useState<number>(0);
   const [videoData,setVideoData]=useState<OembedResponse|null>(null);
   const [playListData,setPlayListData]=useState<Array<playlistDataType>|null>(null);
+  const [videoId,setVideoId]=useState<string|null>(null);
   const musicIndexRef=useRef(musicIndex);
   const musicQueueRef=useRef(musicQueue);
     useEffect(()=>{
@@ -23,9 +24,12 @@ export const useMusicQueue=()=>{
 
   const addMusic=useCallback(async (player:YT.Player)=>{
   if(!link || !player) return;
-  const type=link.length===11?"default":"playlist";
-    if(type === "default"){
-    const apiUrl=`http://localhost:3000/api/video?videoUrl=${IdToUrl(link)}&type=default`;
+  const inputData=extractDataFromInput(link);
+  const type=inputData?.type;
+  if(!inputData||!type) return;
+  setVideoId(inputData.videoId??null);
+  if(type === "default"){
+    const apiUrl=`http://localhost:3000/api/video?videoUrl=${encodeURIComponent(inputData.url)}&type=default`;
     const detailsResponse = await fetch(apiUrl, {
   method: "GET",
   cache: "no-cache",
@@ -35,10 +39,10 @@ export const useMusicQueue=()=>{
 });
     const jsonData = await detailsResponse.json();
     setVideoData(jsonData?.data);
-    setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link,musicTitle:(jsonData?.data as VideoData)?.title}]);
-    }else{
-    console.log("Fetching playlist details for ID:", link);
-    const apiUrl=`http://localhost:3000/api/video?videoUrl=${link}&type=playlist`;
+    setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:inputData.videoId??undefined,musicTitle:(jsonData?.data as VideoData)?.title}]);
+    }else if(type === "playlist"){
+      if(!inputData.playlistId) return;
+    const apiUrl=`http://localhost:3000/api/video?videoUrl=${encodeURIComponent(inputData.playlistId)}&type=playlist`;
     const data = await fetch(apiUrl, {
   method: "GET",
   cache: "no-cache",
@@ -47,35 +51,16 @@ export const useMusicQueue=()=>{
   }
 });
     if(!data.ok)return;
-    console.log("Playlist details response:", data);
     const jsonData = await data.json();
-    console.log("Playlist details JSON:", jsonData);
-        if(jsonData?.type === "playlist_group"){
-    setVideoData(jsonData?.data?.data);
-    setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link,musicTitle:(jsonData?.data as VideoData)?.title??"playlist"}]);
-    // const playlistsItem=jsonData?.data?.contents.map((item:ytContentType)=>{
-    //   return {title:item?.playlistPanelVideoRenderer?.title?.simpleText,videoId:item?.playlistPanelVideoRenderer?.videoId};
-    // })
+    setMusicQueue((prevQueue)=>[...prevQueue,{musicType:"playlist",musicId:inputData.playlistId??undefined,musicTitle:(jsonData?.data as VideoData)?.title??"playlist"}]);
     const length=jsonData?.data?.data?.contents.length;
-    // console.log(jsonData?.data?.data?.contents[0]);
     const playlistsItem=jsonData?.data?.data?.contents.map((item:ytContentType,index:number)=>{
       if(index +1 ===length) return;
       return {title:item?.playlistVideoRenderer?.title?.runs?.[0]?.text,videoId:item?.playlistVideoRenderer?.videoId};
     })
     playlistsItem.pop();
-    console.log("Extracted playlist items:", playlistsItem);
+    console.log(playlistsItem);
     setPlayListData(playlistsItem);
-    }else{
-    setVideoData(jsonData?.data);
-    setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:link,musicTitle:(jsonData?.data as VideoData)?.title??"playlist"}]);
-    // const playlistsItem=jsonData?.data?.contents.map((item:ytContentType)=>{
-    //   return {title:item?.playlistPanelVideoRenderer?.title?.simpleText,videoId:item?.playlistPanelVideoRenderer?.videoId};
-    // })
-    const playlistsItem=jsonData?.data?.contents.map((item:ytContentType)=>{
-      return {title:item?.playlistVideoRenderer?.title?.runs?.[0]?.text,videoId:item?.playlistVideoRenderer?.videoId};
-    })
-    setPlayListData(playlistsItem);
-    }
 
     }
   setLink("");
@@ -89,5 +74,7 @@ export const useMusicQueue=()=>{
   const stop=useCallback(()=>{
     setMusicIndex(0);
   },[])
-  return {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,videoData,playListData};
+  return {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,videoData,playListData,videoId};
 }
+
+//youtube public playlist and video id only

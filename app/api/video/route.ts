@@ -1,12 +1,13 @@
 // import { ServerResponseType } from "@/types/responseType";
 import { NextRequest,NextResponse } from "next/server";
 export async function GET(req:NextRequest){
-    const videoUrl=req.nextUrl.searchParams.get("videoUrl");
+    const videoUrl=decodeURIComponent(req.nextUrl.searchParams.get("videoUrl")||"");
     const type=req.nextUrl.searchParams.get("type");
     console.log("Fetching video details for URL(s):", videoUrl,type);
     if(!videoUrl || !type) return NextResponse.json({success:true,message:"Video API is working"});
     if(!videoUrl) return NextResponse.json({success:false,message:"No video URL provided",data:videoUrl}, {status: 400});
-    if(typeof videoUrl === "string"&& type === "default"){ 
+    if(type === "default"){ 
+        console.log("first condition matched");
     const youtubeOembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
     try {
         const response = await fetch(youtubeOembedUrl,{
@@ -16,7 +17,7 @@ export async function GET(req:NextRequest){
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log("Fetched video details:");
+        console.log("Fetched video details:",data);
         return NextResponse.json({ success: true, data: { ...data, url: videoUrl }, type: "single" }, {
         headers: {
             "Cache-Control": "public, max-age=86400"
@@ -29,13 +30,10 @@ export async function GET(req:NextRequest){
             message: "Failed to fetch video details",
             data:videoUrl
         }, {status: 500});
-    }}else if(typeof videoUrl === "string" &&type === "playlist"){
-    //     console.log("Fetching playlist details for ID 22:", videoUrl);
-    //  const youtubeUrl=`http://www.youtube.com/playlist?list=${videoUrl}`;
-    //  console.log("Constructed YouTube playlist URL:", youtubeUrl);
-    // const youtubeOembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(youtubeUrl)}&format=json`;
+    }}else if(type === "playlist"){
     try {
-    const response=await fetch("https://youtube.com/playlist?list=PLJgnw1qq2tSAulGnhJqT4mzEgQAdOZIjx&si=hyHqcutkaCIYSt8P",
+    const playlistUrl=`https://www.youtube.com/playlist?list=${videoUrl}`;
+    const response=await fetch(playlistUrl,
       {
         headers: {
         "User-Agent": "Mozilla/5.0",
@@ -53,13 +51,6 @@ export async function GET(req:NextRequest){
         }
 
         const ytData = JSON.parse(jsonMatch[1]);
-    // return NextResponse.json({
-    //     success:true,
-    //     data:ytData.contents.twoColumnWatchNextResults?.playlist?.playlist,
-    //     type:"single"
-    // }, {status: 200,headers: {
-    //         "Cache-Control": "public, max-age=86400"
-    //     }});
         return NextResponse.json({
         success:true,
         data:{data:ytData.contents.twoColumnBrowseResultsRenderer?.tabs[0]?.tabRenderer?.content?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents[0]?.playlistVideoListRenderer, title: ytData.metadata?.playlistMetadataRenderer?.title},
@@ -74,7 +65,8 @@ export async function GET(req:NextRequest){
             message: "Failed to fetch video details",
             data:videoUrl
         }, {status: 500});
-    }}else{
+    }
+    }else{
     return NextResponse.json({success:false,message:"type and videoUrl mismatch", data: videoUrl}, {status: 400});
 }
 }
@@ -109,3 +101,37 @@ export async function GET(req:NextRequest){
 //         }});
 
 //     }
+
+// else if(type === "playlist"){
+//     try {
+//         const playlistUrl=`https://www.youtube.com/playlist?list=${videoUrl}`;
+//     const response=await fetch(playlistUrl,
+//       {
+//         headers: {
+//         "User-Agent": "Mozilla/5.0",
+//         "Accept-Language": "en-US,en;q=0.9",
+//         },
+//         next: { revalidate: 86400 }
+//     });
+//         const html = await response.text();
+//         const jsonMatch = html.match(/var ytInitialData = (.*?);<\/script>/);
+//         if (!jsonMatch) {
+//         throw new Error("ytInitialData not found");
+//         }
+
+//         const ytData = JSON.parse(jsonMatch[1]);
+//     return NextResponse.json({
+//         success:true,
+//         data:ytData.contents.twoColumnWatchNextResults?.playlist?.playlist,
+//         type:"single"
+//     }, {status: 200,headers: {
+//             "Cache-Control": "public, max-age=86400"
+//         }});
+//     } catch (error) {
+//         console.error("Error fetching video details:", error);
+//         return NextResponse.json({
+//             success:false,
+//             message: "Failed to fetch video details",
+//             data:videoUrl
+//         }, {status: 500});
+//     }}

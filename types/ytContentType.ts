@@ -3,6 +3,7 @@ export interface ytContentType{
         title?:{
             simpleText?:string;
         }
+        videoId?:string;
     }
     playlistVideoRenderer?:{
         title?:{

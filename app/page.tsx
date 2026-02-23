@@ -10,13 +10,12 @@ import { extractIdFromUrl, playVideoById } from '@/util/musicId';
 
 export default function Home() {
   const {player,loading,duration}=useYoutubePlayer();
-  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData}=useMusicQueue();
+  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData,videoId}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
   const [currentTime,setCurrentTime]=useState<number>(0);
   const [isPlaying,setIsPlaying]=useState<boolean>(false);
   const [imageUrl,setImageUrl]=useState<string>(placeholderImage.src);
   const [hasTriedFallback,setHasTriedFallback]=useState<boolean>(false);
-  const [playListId,setPlayListId]=useState<Array<string>|null>(null);
   // const currentItem = musicQueue[musicIndex];
   // const playlistId = useMemo(
   //   () => {
@@ -88,25 +87,11 @@ const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
       setMusicIndex(0);
     }
   }
-  // if(event.data === YT.PlayerState.PLAYING){
-  //   console.log("Playing state detected, checking for playlist details...");
-  //   if(!playListId && musicQueueRef.current[musicIndexRef.current]?.musicType === "playlist"){
-  //     console.log("Fetching playlist details for ID:", musicQueueRef.current[musicIndexRef.current]?.musicId);
-  //     const res=await fetch("http://localhost:3000/api/video",{
-  //       method:"POST",
-  //       headers:{
-  //         "Content-Type":"application/json"
-  //       },
-  //       body:JSON.stringify({
-  //       videoUrl: player.getPlaylist(),
-  //       type: "playlist"})
-  //     })
-  //     console.log("Playlist details response:", res);
-  //     const jsonRes=await res.json();
-  //     console.log("Playlist response:", jsonRes);
-  //   // setPlayListId(jsonRes);
-  //   }
-  // }
+  if(event.data === YT.PlayerState.PLAYING){
+  if (player.getPlaylistIndex() >= 99) {
+    player.stopVideo();
+  }
+  }
 }, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player]);
 useEffect(() => {
   if (player) {
@@ -182,7 +167,7 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       </div>
       <ul className='flex flex-col h-88 gap-2 overflow-y-auto w-[12%]'>
-        {musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""} truncate block w-full font-semibold`}>{index+1}. {playlistData?.title}</span></li>)}
+        {musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===player?.getPlaylistIndex()?"bg-emerald-600 text-white cursor-pointer":""} truncate block w-full font-semibold`}>{index+1}. {playlistData?.title}</span></li>)}
       </ul>
       </div>
       <hr className='border-2 w-full my-5' />
