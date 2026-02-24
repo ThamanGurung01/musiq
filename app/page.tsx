@@ -13,7 +13,7 @@ import Loading from '@/components/Loading';
 export default function Home() {
   const {player,duration}=useYoutubePlayer();
   const {loading,musicQueueLoading,playlistLoading}=useLoadingContext();
-  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData,videoId}=useMusicQueue();
+  const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
   const [currentTime,setCurrentTime]=useState<number>(0);
   const [isPlaying,setIsPlaying]=useState<boolean>(false);
@@ -71,6 +71,9 @@ const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
       : placeholderImage.src;
     setHasTriedFallback(false);
     setImageUrl(prev => (prev === nextUrl ? prev : nextUrl));
+    if (player.getPlaylistIndex() >= 99) {
+    player.stopVideo();
+  }
   }
   if (event.data === YT.PlayerState.ENDED) {
       setIsPlaying(false);
@@ -90,11 +93,7 @@ const handleStateChange = useCallback(async (event: YT.OnStateChangeEvent) => {
       setMusicIndex(0);
     }
   }
-  if(event.data === YT.PlayerState.PLAYING){
-  if (player.getPlaylistIndex() >= 99) {
-    player.stopVideo();
-  }
-  }
+
 }, [musicIndexRef, musicQueueRef, setMusicIndex,loop,player]);
 useEffect(() => {
   if (player) {
@@ -146,6 +145,16 @@ const handlePause=()=>{
   setIsPlaying(false);
 }
 const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer`;
+const handleNextPlaylist=()=>{
+  if(!player) return;
+if(player?.getPlaylistIndex() >= 99) return;
+  player?.nextVideo();
+}
+const handlePrevPlaylist=()=>{
+  if(!player) return;
+  if(player?.getPlaylistIndex() <= 0) return;
+  player?.previousVideo();
+}
   return (
     <div>
       <h1 className='text-center m-4'>MusiQ plays music in queue</h1>
@@ -169,9 +178,16 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       </div>
       </div>
-      <ul className='flex flex-col h-88 gap-2 overflow-y-auto w-[12%]'>
-        {playlistLoading?<Loading/>:musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===player?.getPlaylistIndex()?"bg-emerald-600 text-white cursor-pointer":""} truncate block w-full font-semibold`}>{index+1}. {playlistData?.title}</span></li>)}
+      <div className='flex flex-col gap-4 h-87 w-[13%] mt-2'>
+      <ul className=' overflow-y-auto h-full w-full'>
+      {playlistLoading?<Loading/>:musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===player?.getPlaylistIndex()?"bg-emerald-600 text-white":""} px-2 truncate block w-full font-semibold cursor-pointer`}>{index+1}. {playlistData?.title}</span></li>)}
       </ul>
+      {!playlistLoading&& musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 &&       
+      (<div className='flex gap-10 justify-center'>
+      <button className={`${buttonStyle} bg-red-500 cursor-pointer`} onClick={handlePrevPlaylist}>{"<<"}</button>
+      <button className={`${buttonStyle} bg-red-500 cursor-pointer`} onClick={handleNextPlaylist}>{">>"}</button>
+      </div>)}
+      </div>
       </div>
       <hr className='border-2 w-full my-5' />
       <div className='flex flex-col items-center m-4 gap-4'>
@@ -180,10 +196,13 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       <button onClick={async ()=>player && await addMusic(player)} disabled={loading || !player} className={`px-4 py-1.5 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer bg-green-500`}>Add</button>
       </div>
       <h1>Music Queue</h1>
-      <ul className='w-[17%] overflow-y-auto h-88'>
-      {musicQueueLoading?<Loading/>:musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`} title={i.musicTitle}><span className='truncate block w-full font-semibold'>{index+1}. {i.musicTitle}</span></li>):<p>No music in queue</p>}
-      </ul>
+      {musicQueueLoading?<Loading/>:(<ul className='w-[17%] overflow-y-auto h-88'>
+      {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white":""}`} title={i.musicTitle}><span className='truncate block w-full font-semibold cursor-pointer'>{index+1}. {i.musicType=="playlist"?"P":"S"} : {i.musicTitle}</span></li>):<p>No music in queue</p>}
+      </ul>)}
       </div>
+      {/* <button onClick={()=>{
+        player?.playVideoAt(99)
+      }}>last index</button> */}
       <div id="player"></div>
     </div>
   );
