@@ -7,11 +7,12 @@ import { useCallback, useEffect, useState } from 'react';
 import MusicDuration from '@/components/MusicDuration';
 import { extractIdFromUrl, playVideoById } from '@/util/musicId';
 import { useLoadingContext } from '@/contexts/LoadingContext';
+import Loading from '@/components/Loading';
 
 
 export default function Home() {
   const {player,duration}=useYoutubePlayer();
-  const {loading}=useLoadingContext();
+  const {loading,musicQueueLoading,playlistLoading}=useLoadingContext();
   const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData,videoId}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
   const [currentTime,setCurrentTime]=useState<number>(0);
@@ -31,7 +32,6 @@ export default function Home() {
   // console.log("Current Item:", currentItem);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
-  console.log(loading);
   const updateCurrentTime=useCallback(()=>{
     if (!player || typeof player.getPlayerState !== "function") return;
     if(player?.getPlayerState()===YT.PlayerState.PLAYING){
@@ -170,7 +170,7 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       </div>
       <ul className='flex flex-col h-88 gap-2 overflow-y-auto w-[12%]'>
-        {musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===player?.getPlaylistIndex()?"bg-emerald-600 text-white cursor-pointer":""} truncate block w-full font-semibold`}>{index+1}. {playlistData?.title}</span></li>)}
+        {playlistLoading?<Loading/>:musicQueue.length>0 && musicQueue[musicIndex].musicType === "playlist" && playListData && playListData.length>0 && playListData.map((playlistData,index)=><li key={index} title={playlistData?.videoId}><span className={`${index===player?.getPlaylistIndex()?"bg-emerald-600 text-white cursor-pointer":""} truncate block w-full font-semibold`}>{index+1}. {playlistData?.title}</span></li>)}
       </ul>
       </div>
       <hr className='border-2 w-full my-5' />
@@ -181,7 +181,7 @@ const buttonStyle=`px-5 py-2 text-white rounded disabled:bg-gray-400 disabled:cu
       </div>
       <h1>Music Queue</h1>
       <ul className='w-[17%] overflow-y-auto h-88'>
-      {musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`} title={i.musicTitle}><span className='truncate block w-full font-semibold'>{index+1}. {i.musicTitle}</span></li>):<p>No music in queue</p>}
+      {musicQueueLoading?<Loading/>:musicQueue.length>0 ? musicQueue.map((i,index)=><li key={index} className={`${index===musicIndex?"bg-emerald-600 text-white cursor-pointer":""}`} title={i.musicTitle}><span className='truncate block w-full font-semibold'>{index+1}. {i.musicTitle}</span></li>):<p>No music in queue</p>}
       </ul>
       </div>
       <div id="player"></div>

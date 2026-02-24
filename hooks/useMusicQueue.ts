@@ -10,7 +10,7 @@ interface VideoData {
   [key: string]: string | number | boolean | null | undefined;
 }
 export const useMusicQueue=()=>{
-  const {loading,setLoading}=useLoadingContext();
+  const {setLoading,setPlaylistLoading,setMusicQueueLoading}=useLoadingContext();
   const [link, setLink] = useState<string>("");
   const [musicQueue, setMusicQueue]=useState<{musicType?:string,musicId?:string,musicTitle?:string}[]>([]);
   const [musicIndex,setMusicIndex]=useState<number>(0);
@@ -32,10 +32,10 @@ export const useMusicQueue=()=>{
   if(!inputData||!type) return;
   setVideoId(inputData.videoId??null);
   if(type === "default"){
+    setMusicQueueLoading(true);
     const apiUrl=`http://localhost:3000/api/video?videoUrl=${encodeURIComponent(inputData.url)}&type=default`;
     const detailsResponse = await fetch(apiUrl, {
   method: "GET",
-  cache: "no-cache",
   headers: {
     "Content-Type": "application/json"
   }
@@ -44,6 +44,7 @@ export const useMusicQueue=()=>{
     setVideoData(jsonData?.data);
     setMusicQueue((prevQueue)=>[...prevQueue,{musicType:type,musicId:inputData.videoId??undefined,musicTitle:(jsonData?.data as VideoData)?.title}]);
     }else if(type === "playlist"){
+    setPlaylistLoading(true);
       if(!inputData.playlistId) return;
     const apiUrl=`http://localhost:3000/api/video?videoUrl=${encodeURIComponent(inputData.playlistId)}&type=playlist`;
     const data = await fetch(apiUrl, {
@@ -67,8 +68,10 @@ export const useMusicQueue=()=>{
 
     }
   setLoading(false);
+  setMusicQueueLoading(false);
+  setPlaylistLoading(false);
   setLink("");
-  },[link,setLoading])
+  },[link,setLoading,setMusicQueueLoading,setPlaylistLoading])
   const next=useCallback(()=>{
     setMusicIndex(prevIndex => (prevIndex + 1) % musicQueueRef.current.length);
   },[])
