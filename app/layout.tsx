@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LoadingProvider } from "@/contexts/LoadingContext";
 
 export const metadata: Metadata = {
   title: "MusiQ",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <LoadingProvider>{children}</LoadingProvider>
       </body>
     </html>
   );

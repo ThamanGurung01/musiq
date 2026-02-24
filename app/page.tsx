@@ -6,10 +6,12 @@ import placeholderImage from '../public/placeholder.png';
 import { useCallback, useEffect, useState } from 'react';
 import MusicDuration from '@/components/MusicDuration';
 import { extractIdFromUrl, playVideoById } from '@/util/musicId';
+import { useLoadingContext } from '@/contexts/LoadingContext';
 
 
 export default function Home() {
-  const {player,loading,duration}=useYoutubePlayer();
+  const {player,duration}=useYoutubePlayer();
+  const {loading}=useLoadingContext();
   const {link,setLink,addMusic,next,prev,stop,musicQueue,musicIndex,musicIndexRef,musicQueueRef,setMusicIndex,playListData,videoData,videoId}=useMusicQueue();
   const [loop,setLoop]=useState<boolean>(false);
   const [currentTime,setCurrentTime]=useState<number>(0);
@@ -29,6 +31,7 @@ export default function Home() {
   // console.log("Current Item:", currentItem);
   // const [video_Id, setVideoId] = useState<string>("qFQy0O4HYWs"); 
   // const [musicState,setMusicState]=useState<YT.PlayerState | null>(null);
+  console.log(loading);
   const updateCurrentTime=useCallback(()=>{
     if (!player || typeof player.getPlayerState !== "function") return;
     if(player?.getPlayerState()===YT.PlayerState.PLAYING){

@@ -3,12 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { OembedResponse } from '@/types/oembedType';
 import { extractDataFromInput } from "@/util/musicId";
 import { playlistDataType, ytContentType } from "@/types/ytContentType";
+import { useLoadingContext } from "@/contexts/LoadingContext";
 
 interface VideoData {
   title?: string;
   [key: string]: string | number | boolean | null | undefined;
 }
 export const useMusicQueue=()=>{
+  const {loading,setLoading}=useLoadingContext();
   const [link, setLink] = useState<string>("");
   const [musicQueue, setMusicQueue]=useState<{musicType?:string,musicId?:string,musicTitle?:string}[]>([]);
   const [musicIndex,setMusicIndex]=useState<number>(0);
@@ -23,6 +25,7 @@ export const useMusicQueue=()=>{
     },[musicQueue,musicIndex])
 
   const addMusic=useCallback(async (player:YT.Player)=>{
+  setLoading(true);
   if(!link || !player) return;
   const inputData=extractDataFromInput(link);
   const type=inputData?.type;
@@ -63,8 +66,9 @@ export const useMusicQueue=()=>{
     setPlayListData(playlistsItem);
 
     }
+  setLoading(false);
   setLink("");
-  },[link])
+  },[link,setLoading])
   const next=useCallback(()=>{
     setMusicIndex(prevIndex => (prevIndex + 1) % musicQueueRef.current.length);
   },[])

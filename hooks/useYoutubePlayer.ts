@@ -1,3 +1,4 @@
+import { useLoadingContext } from "@/contexts/LoadingContext";
 import { useCallback, useEffect, useState } from "react";
 
 type YTWindow=Window & {
@@ -6,7 +7,7 @@ type YTWindow=Window & {
 }
 export const useYoutubePlayer=()=>{
   const [player, setPlayer] = useState<YT.Player | null>(null);
-  const [loading,setLoading]=useState(true);
+  const {loading,setLoading}=useLoadingContext();
   const [duration,setDuration]=useState<number>(0);
   const createScript=useCallback(()=>{
     const tag=document.createElement('script');
@@ -30,7 +31,7 @@ export const useYoutubePlayer=()=>{
           }}}
         })
     setPlayer(newPlayer);
-  },[player])
+  },[player,setLoading,setPlayer,setDuration])
 
   useEffect(()=>{
     createScript();
